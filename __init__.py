@@ -38,6 +38,8 @@ FEED_LABELS = {
 
 NOTE_WIDTH = 15
 NOTE_ROWS = 3
+NOTE_MAX_CHARS = NOTE_WIDTH * NOTE_ROWS  # 45 — full Vestaboard Note capacity
+DEFAULT_MAX_HEADLINE = 45
 USER_AGENT = "FiestaBoard-BBC-News/1.0 (+https://fiestaboard.app)"
 
 
@@ -57,6 +59,27 @@ def _vestaboard_safe(text: str) -> str:
     text = re.sub(r"[^A-Z0-9 $&@.,:!?'\-/%]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def _truncate_headline(text: str, max_chars: int) -> str:
+    """Truncate to max_chars, preferably on a word boundary.
+
+    Absolute hard cap is NOTE_MAX_CHARS (45) so the result always fits a Note.
+    """
+    max_chars = max(1, min(int(max_chars), NOTE_MAX_CHARS))
+    text = (text or "").strip()
+    if len(text) <= max_chars:
+        return text
+    # Prefer word boundary
+    cut = text[: max_chars + 1]
+    if " " in cut:
+        cut = cut.rsplit(" ", 1)[0]
+    else:
+        cut = text[:max_chars]
+    cut = cut.strip()
+    if len(cut) > max_chars:
+        cut = cut[:max_chars]
+    return cut
 
 
 def _wrap_words(text: str, width: int, max_rows: int) -> List[str]:
@@ -108,17 +131,17 @@ def _wrap_words(text: str, width: int, max_rows: int) -> List[str]:
     return [line[:width].ljust(width) for line in lines[:max_rows]]
 
 
-def _note_block(headline: str) -> Tuple[str, str, str, str]:
+def _note_block(headline: str, max_chars: int = DEFAULT_MAX_HEADLINE) -> Tuple[str, str, str, str]:
     """
-    Build a Vestaboard Note block (15×3).
+    Build a Vestaboard Note block (15×3) from a headline truncated to max_chars.
 
-    Row 1: BBC NEWS + optional short feed tag
-    Rows 2–3 (and overflow into row 1 if needed): wrapped headline
+    Absolute maximum is 45 characters (full Note capacity). Text is uppercased,
+    sanitised, truncated (word-aware), then word-wrapped into 3 rows of 15.
 
     Returns note_block (joined with newlines), row1, row2, row3.
     """
     safe = _vestaboard_safe(headline)
-    # Prefer: line1 label, lines 2-3 body — but if headline is short, still fill
+    safe = _truncate_headline(safe, max_chars)
     body_lines = _wrap_words(safe, NOTE_WIDTH, NOTE_ROWS)
 
     # If first body line is empty, fall back to BBC NEWS header style
@@ -165,6 +188,12 @@ class BbcNewsPlugin(PluginBase):
         idx = config.get("headline_index", 0)
         if not isinstance(idx, int) or idx < 0 or idx > 9:
             errors.append("headline_index must be an integer 0-9")
+        max_h = config.get("max_headline_chars", DEFAULT_MAX_HEADLINE)
+        if not isinstance(max_h, int) or max_h < 10 or max_h > NOTE_MAX_CHARS:
+            errors.append(
+                f"max_headline_chars must be an integer 10-{NOTE_MAX_CHARS} "
+                "(Vestaboard Note hard limit is 45)"
+            )
         return errors
 
     def on_config_change(self, old_config: Dict[str, Any], new_config: Dict[str, Any]) -> None:
@@ -180,6 +209,8 @@ class BbcNewsPlugin(PluginBase):
             feed_key = "top"
         idx = int(self.config.get("headline_index", 0) or 0)
         idx = max(0, min(9, idx))
+        max_chars = int(self.config.get("max_headline_chars", DEFAULT_MAX_HEADLINE) or DEFAULT_MAX_HEADLINE)
+        max_chars = max(10, min(NOTE_MAX_CHARS, max_chars))
         url = FEED_URLS[feed_key]
         feed_name = FEED_LABELS.get(feed_key, "BBC")
 
@@ -194,11 +225,13 @@ class BbcNewsPlugin(PluginBase):
             idx = min(idx, len(items) - 1)
             top = items[idx]
             headline = top["title"]
-            note_block, r1, r2, r3 = _note_block(headline)
-            lines = _wrap_words(_vestaboard_safe(headline), NOTE_WIDTH, NOTE_ROWS)
+            safe_full = _vestaboard_safe(headline)
+            truncated = _truncate_headline(safe_full, max_chars)
+            note_block, r1, r2, r3 = _note_block(headline, max_chars=max_chars)
+            lines = _wrap_words(truncated, NOTE_WIDTH, NOTE_ROWS)
 
-            # Secondary short form (single line, 45 chars for Flagship-style use)
-            short = _vestaboard_safe(headline)[:45]
+            # Single-line form: same hard 45-char Note limit
+            short = truncated
 
             headlines_out = []
             for it in items[:10]:
@@ -214,6 +247,7 @@ class BbcNewsPlugin(PluginBase):
             data = {
                 "headline": headline[:80],
                 "headline_short": short,
+                "headline_truncated": truncated,
                 "headline_line1": lines[0],
                 "headline_line2": lines[1],
                 "headline_line3": lines[2],

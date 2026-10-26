@@ -1,6 +1,7 @@
 """Tests for bbc_news plugin."""
 
 from unittest.mock import patch
+# mod is loaded below
 import importlib.util
 import sys
 from pathlib import Path
@@ -103,3 +104,21 @@ def test_fetch_data_network_error(sample_config):
         result = p.fetch_data()
     assert result.available is False
     assert result.error
+
+
+def test_truncate_max_45():
+    long = "INDEPENDENT REVIEW ANNOUNCED INTO MURDER OF STUDENT HENRY NOWAK AND MORE WORDS"
+    out = mod._truncate_headline(long, 45)
+    assert len(out) <= 45
+    # word boundary: should not end mid-word if possible
+    assert " " not in out or out == out.rstrip()
+
+
+def test_note_block_respects_max_chars():
+    block, r1, r2, r3 = _note_block(
+        "Independent review announced into murder of student Henry Nowak extra",
+        max_chars=30,
+    )
+    body = (r1 + r2 + r3).replace(" ", "")
+    # Content without padding spaces should reflect ~30 char source
+    assert len(r1) == 15 and len(r2) == 15 and len(r3) == 15

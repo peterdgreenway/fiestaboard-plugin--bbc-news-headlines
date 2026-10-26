@@ -12,6 +12,23 @@ Display the latest BBC News headline on your Vestaboard, formatted for a **Note*
 
 No API key is required. Data comes from public BBC RSS feeds.
 
+## Headline length (max 45)
+
+Under **Integrations → BBC News Headlines**:
+
+- **Max headline characters** (default **45**, range 10–45)
+- 45 characters = full Vestaboard Note capacity (15 × 3)
+- Longer BBC titles are abbreviated on a word boundary, then wrapped into three rows
+
+Variables:
+
+| Variable | Meaning |
+|----------|---------|
+| `headline` | Full original title |
+| `headline_truncated` | Uppercase, max 45 chars |
+| `headline_short` | Same as truncated (single line) |
+| `note_row1` … `note_row3` | Wrapped Note rows (15 each) |
+
 ## Note layout (15×3)
 
 Use these variables on a **Note** page:

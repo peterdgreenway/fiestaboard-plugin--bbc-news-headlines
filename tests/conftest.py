@@ -11,6 +11,7 @@ def sample_config():
         "feed": "top",
         "refresh_seconds": 300,
         "headline_index": 0,
+        "max_headline_chars": 45,
     }
 
 

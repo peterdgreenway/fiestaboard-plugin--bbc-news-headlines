@@ -1,8 +1,8 @@
 {
   "id": "bbc_news",
   "name": "BBC News Headlines",
-  "version": "1.0.1",
-  "description": "Latest BBC News headlines via RSS. Note-sized formatted block for the top story.",
+  "version": "1.1.0",
+  "description": "Latest BBC News headlines via RSS. Truncates to max 45 characters and formats for a Vestaboard Note (15\u00d73).",
   "author": "petergreenway",
   "icon": "newspaper",
   "category": "data",
@@ -64,6 +64,14 @@
         "default": 0,
         "minimum": 0,
         "maximum": 9
+      },
+      "max_headline_chars": {
+        "type": "integer",
+        "title": "Max headline characters",
+        "description": "Absolute maximum length after abbreviation (10\u201345). 45 is a full Vestaboard Note (15 columns \u00d7 3 rows). Truncation prefers a word boundary.",
+        "default": 45,
+        "minimum": 10,
+        "maximum": 45
       }
     }
   },
@@ -71,6 +79,7 @@
     "simple": [
       "headline",
       "headline_short",
+      "headline_truncated",
       "headline_line1",
       "headline_line2",
       "headline_line3",
@@ -118,6 +127,7 @@
     "headlines.*.title": 80,
     "headlines.*.title_short": 22,
     "headlines.*.link": 80,
-    "headlines.*.published": 25
+    "headlines.*.published": 25,
+    "headline_truncated": 45
   }
 }

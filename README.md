@@ -41,6 +41,7 @@ Headlines are uppercased, sanitised for board characters, and word-wrapped to 15
 | feed | top | BBC section |
 | refresh_seconds | 300 | Min 120 |
 | headline_index | 0 | Which item (0 = top) |
+| max_headline_chars | 45 | Truncate/abbreviate to this length (hard max 45 for Note) |
 
 ## Development layout
 
