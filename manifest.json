@@ -1,0 +1,123 @@
+{
+  "id": "bbc_news_headlines",
+  "name": "BBC News Headlines",
+  "version": "1.0.0",
+  "description": "Latest BBC News headlines via RSS. Note-sized formatted block for the top story.",
+  "author": "petergreenway",
+  "icon": "newspaper",
+  "category": "data",
+  "repository": "https://github.com/petergreenway/fiestaboard-plugin--bbc-news",
+  "documentation": "docs/SETUP.md",
+  "min_refresh_seconds": 120,
+  "teaser": "BBC HEADLINE   ",
+  "previews": [
+    {
+      "device_type": "note",
+      "rows": [
+        "BBC NEWS       ",
+        "INDEPENDENT    ",
+        "REVIEW ANNOUNCE"
+      ]
+    },
+    {
+      "device_type": "flagship",
+      "rows": [
+        "     BBC NEWS        ",
+        "Independent review   ",
+        "announced into murder",
+        "of student Henry     ",
+        "Nowak                ",
+        "                    "
+      ]
+    }
+  ],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "feed": {
+        "type": "string",
+        "title": "BBC feed",
+        "description": "Which BBC RSS section to use",
+        "enum": [
+          "top",
+          "uk",
+          "world",
+          "business",
+          "politics",
+          "technology",
+          "science"
+        ],
+        "default": "top"
+      },
+      "refresh_seconds": {
+        "type": "integer",
+        "title": "Refresh Interval (seconds)",
+        "description": "How often to re-fetch headlines (minimum 120)",
+        "default": 300,
+        "minimum": 120,
+        "maximum": 3600
+      },
+      "headline_index": {
+        "type": "integer",
+        "title": "Headline index",
+        "description": "0 = top story, 1 = second, etc. (0-9)",
+        "default": 0,
+        "minimum": 0,
+        "maximum": 9
+      }
+    }
+  },
+  "variables": {
+    "simple": [
+      "headline",
+      "headline_short",
+      "headline_line1",
+      "headline_line2",
+      "headline_line3",
+      "note_block",
+      "note_row1",
+      "note_row2",
+      "note_row3",
+      "description",
+      "link",
+      "published",
+      "published_short",
+      "feed_name",
+      "source",
+      "last_updated"
+    ],
+    "arrays": {
+      "headlines": {
+        "label_field": "title_short",
+        "item_fields": [
+          "title",
+          "title_short",
+          "link",
+          "published"
+        ]
+      }
+    }
+  },
+  "max_lengths": {
+    "headline": 80,
+    "headline_short": 45,
+    "headline_line1": 15,
+    "headline_line2": 15,
+    "headline_line3": 15,
+    "note_block": 47,
+    "note_row1": 15,
+    "note_row2": 15,
+    "note_row3": 15,
+    "description": 100,
+    "link": 80,
+    "published": 25,
+    "published_short": 12,
+    "feed_name": 12,
+    "source": 8,
+    "last_updated": 20,
+    "headlines.*.title": 80,
+    "headlines.*.title_short": 22,
+    "headlines.*.link": 80,
+    "headlines.*.published": 25
+  }
+}
