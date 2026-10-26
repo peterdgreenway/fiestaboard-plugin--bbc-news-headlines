@@ -1,4 +1,4 @@
-# FiestaBoard plugin: BBC News
+# FiestaBoard plugin: BBC News Headlines
 
 Latest BBC News headlines from public RSS feeds, with a **Vestaboard Note** (15×3) formatted block for the top story.
 

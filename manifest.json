@@ -1,7 +1,7 @@
 {
-  "id": "bbc_news_headlines",
+  "id": "bbc_news",
   "name": "BBC News Headlines",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Latest BBC News headlines via RSS. Note-sized formatted block for the top story.",
   "author": "petergreenway",
   "icon": "newspaper",
@@ -9,7 +9,7 @@
   "repository": "https://github.com/petergreenway/fiestaboard-plugin--bbc-news",
   "documentation": "docs/SETUP.md",
   "min_refresh_seconds": 120,
-  "teaser": "BBC HEADLINE   ",
+  "teaser": "BBC HEADLINES  ",
   "previews": [
     {
       "device_type": "note",
@@ -22,7 +22,7 @@
     {
       "device_type": "flagship",
       "rows": [
-        "     BBC NEWS        ",
+        "  BBC NEWS HEADLINES  ",
         "Independent review   ",
         "announced into murder",
         "of student Henry     ",

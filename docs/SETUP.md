@@ -1,4 +1,4 @@
-# BBC News — Setup
+# BBC News Headlines — Setup
 
 Display the latest BBC News headline on your Vestaboard, formatted for a **Note** (15×3).
 
