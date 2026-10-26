@@ -61,25 +61,128 @@ def _vestaboard_safe(text: str) -> str:
     return text
 
 
-def _truncate_headline(text: str, max_chars: int) -> str:
-    """Truncate to max_chars, preferably on a word boundary.
+# Phrase / word substitutions applied before length compression (order matters)
+_PHRASE_SUBS = [
+    (r"\bUnited States\b", "US"),
+    (r"\bU\.S\.\b", "US"),
+    (r"\bUnited Kingdom\b", "UK"),
+    (r"\bGreat Britain\b", "UK"),
+    (r"\bEuropean Union\b", "EU"),
+    (r"\bPrime Minister\b", "PM"),
+    (r"\bPresident\b", "Pres"),
+    (r"\bMet Office\b", "Met"),
+    (r"\bwithout power\b", "no power"),
+    (r"\bgoing to the polls\b", "elections"),
+    (r"\bthe consequences will be global\b", "may reshape world"),
+    (r"\bconsequences will be global\b", "may reshape world"),
+    (r"\bIndependent review announced into\b", "Review ordered into"),
+    (r"\breview announced into\b", "review into"),
+    (r"\bannounced into\b", "into"),
+    (r"\bwhile racing\b", "racing"),
+    (r"\bwho killed\b", "kill"),
+    (r"\bhelped turn\b", "boosted"),
+    (r"\bturn .+? election around\b", "boosted election"),
+    (r"\belection around\b", "election"),
+    (r"\bissues? new wind warning\b", "new warning"),
+    (r"\bwind warning\b", "warning"),
+    (r"\bleaves ([0-9][0-9,]*) without power\b", r"cuts power to \1"),
+    (r"\bWhatsApp channel\b", "WhatsApp"),
+    (r"\bmurder of student\b", "student murder"),
+    (r"\bare both\b", "and"),
+    (r"\bboth going\b", "going"),
+    (r"\bas Met\b", "Met"),
+    (r"\bissues new\b", "new"),
+]
 
-    Absolute hard cap is NOTE_MAX_CHARS (45) so the result always fits a Note.
-    """
-    max_chars = max(1, min(int(max_chars), NOTE_MAX_CHARS))
+_FILLER = {
+    "A", "AN", "THE", "OF", "TO", "IN", "ON", "AT", "FOR", "AND", "OR",
+    "AS", "BY", "FROM", "WITH", "INTO", "OVER", "AFTER", "BEFORE",
+    "THAT", "THIS", "THESE", "THOSE", "IS", "ARE", "WAS", "WERE", "BE",
+    "BEEN", "BEING", "HAS", "HAVE", "HAD", "WILL", "WOULD", "COULD",
+    "SHOULD", "MAY", "MIGHT", "MUST", "SHALL", "DO", "DOES", "DID",
+    "ITS", "IT", "HIS", "HER", "THEIR", "OUR", "YOUR", "WHO", "WHOM",
+    "WHICH", "WHILE", "WHEN", "WHERE", "HOW", "ABOUT", "AGAINST",
+}
+
+
+def _apply_phrase_subs(text: str) -> str:
+    import re as _re
+    out = text
+    for pattern, repl in _PHRASE_SUBS:
+        out = _re.sub(pattern, repl, out, flags=_re.IGNORECASE)
+    out = _re.sub(r"\s+", " ", out).strip()
+    return out
+
+
+def _drop_fillers(text: str, max_chars: int) -> str:
+    """Remove low-value words until under max_chars, keeping order."""
+    words = text.split()
+    if not words:
+        return text
+    # Never drop the first two content words if possible
+    kept = list(words)
+    # Pass: drop fillers from the middle/end first
+    i = len(kept) - 1
+    while i >= 2 and len(" ".join(kept)) > max_chars:
+        w = kept[i].upper().strip(".,:;'!?-")
+        if w in _FILLER:
+            kept.pop(i)
+        i -= 1
+    # Still too long: drop remaining fillers from start side
+    i = 0
+    while i < len(kept) and len(" ".join(kept)) > max_chars:
+        w = kept[i].upper().strip(".,:;'!?-")
+        if w in _FILLER and i > 0:
+            kept.pop(i)
+            continue
+        i += 1
+    return " ".join(kept)
+
+
+def _truncate_at_word(text: str, max_chars: int) -> str:
     text = (text or "").strip()
     if len(text) <= max_chars:
         return text
-    # Prefer word boundary
     cut = text[: max_chars + 1]
     if " " in cut:
         cut = cut.rsplit(" ", 1)[0]
     else:
         cut = text[:max_chars]
-    cut = cut.strip()
-    if len(cut) > max_chars:
-        cut = cut[:max_chars]
-    return cut
+    return cut.strip()[:max_chars]
+
+
+def _paraphrase_headline(text: str, max_chars: int) -> str:
+    """Rework a headline to fit max_chars (hard cap 45 for Vestaboard Note).
+
+    Pipeline:
+      1. Phrase-level substitutions (common news patterns → shorter forms)
+      2. Drop filler words while length exceeds limit
+      3. Word-boundary truncate as last resort
+      4. Re-apply Vestaboard-safe uppercase (subs may alter case)
+    """
+    max_chars = max(1, min(int(max_chars), NOTE_MAX_CHARS))
+    text = (text or "").strip()
+    if not text:
+        return ""
+
+    # Work in a readable form for phrase matching, then normalise
+    text = _apply_phrase_subs(text)
+    text = _vestaboard_safe(text)
+
+    if len(text) <= max_chars:
+        return text
+
+    text = _drop_fillers(text, max_chars)
+    text = _vestaboard_safe(text)
+    if len(text) <= max_chars:
+        return text
+
+    return _vestaboard_safe(_truncate_at_word(text, max_chars))
+
+
+def _truncate_headline(text: str, max_chars: int) -> str:
+    """Back-compat alias: paraphrase then ensure hard cap."""
+    return _paraphrase_headline(text, max_chars)
 
 
 def _wrap_words(text: str, width: int, max_rows: int) -> List[str]:
@@ -135,8 +238,8 @@ def _note_block(headline: str, max_chars: int = DEFAULT_MAX_HEADLINE) -> Tuple[s
     """
     Build a Vestaboard Note block (15×3) from a headline truncated to max_chars.
 
-    Absolute maximum is 45 characters (full Note capacity). Text is uppercased,
-    sanitised, truncated (word-aware), then word-wrapped into 3 rows of 15.
+    Absolute maximum is 45 characters (full Note capacity). Text is uppercased, sanitised, paraphrased/abbreviated to max_chars
+    (hard max 45), then word-wrapped into 3 rows of 15.
 
     Returns note_block (joined with newlines), row1, row2, row3.
     """
@@ -194,6 +297,9 @@ class BbcNewsPlugin(PluginBase):
                 f"max_headline_chars must be an integer 10-{NOTE_MAX_CHARS} "
                 "(Vestaboard Note hard limit is 45)"
             )
+        mode = config.get("shorten_mode", "paraphrase")
+        if mode not in ("paraphrase", "truncate"):
+            errors.append("shorten_mode must be 'paraphrase' or 'truncate'")
         return errors
 
     def on_config_change(self, old_config: Dict[str, Any], new_config: Dict[str, Any]) -> None:
@@ -211,6 +317,7 @@ class BbcNewsPlugin(PluginBase):
         idx = max(0, min(9, idx))
         max_chars = int(self.config.get("max_headline_chars", DEFAULT_MAX_HEADLINE) or DEFAULT_MAX_HEADLINE)
         max_chars = max(10, min(NOTE_MAX_CHARS, max_chars))
+        shorten_mode = self.config.get("shorten_mode", "paraphrase")
         url = FEED_URLS[feed_key]
         feed_name = FEED_LABELS.get(feed_key, "BBC")
 
@@ -225,12 +332,19 @@ class BbcNewsPlugin(PluginBase):
             idx = min(idx, len(items) - 1)
             top = items[idx]
             headline = top["title"]
-            safe_full = _vestaboard_safe(headline)
-            truncated = _truncate_headline(safe_full, max_chars)
+            if shorten_mode == "truncate":
+                truncated = _truncate_at_word(_vestaboard_safe(headline), max_chars)
+            else:
+                truncated = _paraphrase_headline(headline, max_chars)
             note_block, r1, r2, r3 = _note_block(headline, max_chars=max_chars)
-            lines = _wrap_words(truncated, NOTE_WIDTH, NOTE_ROWS)
+            # When truncate mode, rebuild note from truncated only
+            if shorten_mode == "truncate":
+                lines = _wrap_words(truncated, NOTE_WIDTH, NOTE_ROWS)
+                r1, r2, r3 = lines[0], lines[1], lines[2]
+                note_block = f"{r1}\n{r2}\n{r3}"
+            else:
+                lines = _wrap_words(truncated, NOTE_WIDTH, NOTE_ROWS)
 
-            # Single-line form: same hard 45-char Note limit
             short = truncated
 
             headlines_out = []

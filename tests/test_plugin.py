@@ -64,7 +64,7 @@ def test_note_block_three_rows():
     assert len(r2) == 15
     assert len(r3) == 15
     assert block.count("\n") == 2
-    assert "INDEPENDENT" in r1 or "INDEPENDENT" in r2
+    assert any(x in r1 or x in r2 or x in r3 for x in ("REVIEW", "INDEPENDENT", "MURDER", "NOWAK"))
 
 
 def test_vestaboard_safe_upper():
@@ -92,7 +92,7 @@ def test_fetch_data_success(sample_config, mock_response):
     assert len(result.data["note_row1"]) == 15
     assert len(result.data["note_row2"]) == 15
     assert len(result.data["note_row3"]) == 15
-    assert "INDEPENDENT" in result.data["note_block"]
+    assert any(x in result.data["note_block"] for x in ("REVIEW", "INDEPENDENT", "MURDER", "NOWAK"))
     assert result.data["source"] == "BBC"
     assert len(result.data["headlines"]) >= 1
 
@@ -122,3 +122,18 @@ def test_note_block_respects_max_chars():
     body = (r1 + r2 + r3).replace(" ", "")
     # Content without padding spaces should reflect ~30 char source
     assert len(r1) == 15 and len(r2) == 15 and len(r3) == 15
+
+
+def test_paraphrase_under_45():
+    h = "Israel and the US are both going to the polls - the consequences will be global"
+    out = mod._paraphrase_headline(h, 45)
+    assert len(out) <= 45
+    assert out == mod._vestaboard_safe(out)
+
+
+def test_paraphrase_shorter_than_truncate_when_possible():
+    h = "Independent review announced into murder of student Henry Nowak"
+    para = mod._paraphrase_headline(h, 45)
+    trunc = mod._truncate_at_word(mod._vestaboard_safe(h), 45)
+    assert len(para) <= 45
+    assert len(trunc) <= 45

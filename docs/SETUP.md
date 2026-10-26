@@ -12,6 +12,15 @@ Display the latest BBC News headline on your Vestaboard, formatted for a **Note*
 
 No API key is required. Data comes from public BBC RSS feeds.
 
+## Headline length (max 45) & paraphrase
+
+Under **Integrations → BBC News Headlines**:
+
+- **Max headline characters** (default **45**, range 10–45)
+- **Shorten mode**: `paraphrase` (default) reworks the line with abbreviations
+  and filler removal; `truncate` only cuts at a word boundary
+- Hard limit **45** = full Vestaboard Note (15 × 3)
+
 ## Headline length (max 45)
 
 Under **Integrations → BBC News Headlines**:
